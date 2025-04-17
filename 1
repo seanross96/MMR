@@ -1,0 +1,202 @@
+import MenuInput from '../components/MenuInput';
+import PreferencesForm from '../components/PreferencesForm';
+import Recommendations from '../components/Recommendations';
+import { useState } from 'react';
+
+export default function Home() {
+  const [menu, setMenu] = useState(null);
+  const [preferences, setPreferences] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+
+  const handleMenuSubmit = async (menuUrl) => {
+    // Mock menu fetch (replace with real API later)
+    const mockMenu = [
+      { name: 'Burger', ingredients: ['beef', 'bun', 'lettuce', 'tomato'] },
+      { name: 'Salad', ingredients: ['lettuce', 'chicken', 'olive oil'] },
+      { name: 'Pizza', ingredients: ['dough', 'cheese', 'tomato sauce'] },
+    ];
+    setMenu(mockMenu);
+  };
+
+  const handlePreferencesSubmit = (prefs) => {
+    setPreferences(prefs);
+    // Fetch recommendations (mock API call)
+    fetch('/api/recommend', {
+      method: 'POST',
+      body: JSON.stringify({ menu, preferences: prefs }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then((res) => res.json())
+      .then((data) => setRecommendations(data.recommendations));
+  };
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-4">Restaurant Menu Recommender</h1>
+      <MenuInput onSubmit={handleMenuSubmit} />
+      <PreferencesForm onSubmit={handlePreferencesSubmit} />
+      <Recommendations recommendations={recommendations} />
+    </div>
+  );
+}
+export default function handler(req, res) {
+  const { menu, preferences } = req.body;
+
+  // Mock recommendation logic
+  const recommendations = menu
+    .filter((dish) =>
+      preferences.every((pref) => {
+        if (pref.type === 'include') return dish.ingredients.includes(pref.value);
+        if (pref.type === 'exclude') return !dish.ingredients.includes(pref.value);
+        return true;
+      })
+    )
+    .map((dish) => ({
+      name: dish.name,
+      suggestion: preferences.some((pref) => pref.type === 'exclude')
+        ? `Substitute ${dish.ingredients.find((ing) => preferences.some((p) => p.type === 'exclude' && p.value === ing))} if possible`
+        : 'No substitutions needed',
+    }));
+
+  res.status(200).json({ recommendations });
+}
+import { useState } from 'react';
+
+export default function MenuInput({ onSubmit }) {
+  const [url, setUrl] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(url);
+    setUrl('');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-4">
+      <label className="block mb-2">Paste Menu URL or Search Restaurant</label>
+      <input
+        type="text"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        className="border p-2 w-full"
+        placeholder="e.g., https://restaurant.com/menu"
+      />
+      <button type="submit" className="bg-blue-500 text-white p-2 mt-2">
+        Submit
+      </button>
+    </form>
+  );
+}
+import { useState } from 'react';
+
+export default function PreferencesForm({ onSubmit }) {
+  const [selectedPrefs, setSelectedPrefs] = useState([]);
+  const [customPref, setCustomPref] = useState('');
+  const [prefType, setPrefType] = useState('include');
+
+  const predefinedPrefs = ['keto', 'gluten-free', 'carnivore', 'seed-oil-free'];
+
+  const handleAddCustom = () => {
+    if (customPref) {
+      setSelectedPrefs([...selectedPrefs, { type: prefType, value: customPref }]);
+      setCustomPref('');
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(selectedPrefs);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="mb-4">
+      <label className="block mb-2">Select Dietary Preferences</label>
+      {predefinedPrefs.map((pref) => (
+        <label key={pref} className="block">
+          <input
+            type="checkbox"
+            checked={selectedPrefs.some((p) => p.value === pref)}
+            onChange={() =>
+              setSelectedPrefs(
+                selectedPrefs.some((p) => p.value === pref)
+                  ? selectedPrefs.filter((p) => p.value !== pref)
+                  : [...selectedPrefs, { type: 'include', value: pref }]
+              )
+            }
+          />
+          {pref}
+        </label>
+      ))}
+      <label className="block mt-4 mb-2">Add Custom Preference</label>
+      <select
+        value={prefType}
+        onChange={(e) => setPrefType(e.target.value)}
+        className="border p-2 mr-2"
+      >
+        <option value="include">Include</option>
+        <option value="exclude">Exclude</option>
+      </select>
+      <input
+        type="text"
+        value={customPref}
+        onChange={(e) => setCustomPref(e.target.value)}
+        className="border p-2"
+        placeholder="e.g., no kiwis"
+      />
+      <button
+        type="button"
+        onClick={handleAddCustom}
+        className="bg-green-500 text-white p-2 ml-2"
+      >
+        Add
+      </button>
+      <button type="submit" className="bg-blue-500 text-white p-2 mt-2 block">
+        Get Recommendations
+      </button>
+    </form>
+  );
+}
+export default function Recommendations({ recommendations }) {
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-2">Recommendations</h2>
+      {recommendations.length > 0 ? (
+        <ul>
+          {recommendations.map((rec, index) => (
+            <li key={index} className="mb-2">
+              <strong>{rec.name}</strong>: {rec.suggestion}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No recommendations yet. Submit a menu and preferences.</p>
+      )}
+    </div>
+  );
+}
+# Restaurant Menu Recommender
+
+A Next.js app that recommends menu items based on dietary preferences.
+
+## Setup
+1. Install Node.js from [nodejs.org](https://nodejs.org).
+2. Run `npm install` to install dependencies.
+3. Run `npm run dev` to start locally (visit `http://localhost:3000`).
+
+## GitHub Desktop
+1. Extract this folder.
+2. Drag it into GitHub Desktop.
+3. Create a repository and push to GitHub.
+
+## Vercel Deployment
+1. Go to [vercel.com](https://vercel.com).
+2. Import the GitHub repository.
+3. Deploy with default settings.
+
+## Notes
+- Uses mock menu data. Add a real menu parser API for live URLs.
+node_modules/
+.env
+.vercel
+.next/
+out/
